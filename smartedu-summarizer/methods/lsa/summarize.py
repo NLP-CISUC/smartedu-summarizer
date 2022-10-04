@@ -23,7 +23,7 @@ def summarize(args):
     sentences = sentence_split(text)
     summary_size = ceil(args.ratio * len(sentences)) + 1
 
-    parser = PlaintextParser.from_string(text, Tokenizer(args.lang))
+    parser = PlaintextParser.from_string(text, Tokenizer(args.language))
 
     # creating the LSA summarizer 
     lsa_summarizer = LsaSummarizer()
