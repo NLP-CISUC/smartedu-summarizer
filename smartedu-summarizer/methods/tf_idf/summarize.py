@@ -38,7 +38,7 @@ def TF_IDF(text, language):
 
     vectorizer = TfidfVectorizer(stop_words=stopWords)
     vectors = vectorizer.fit_transform(sentence_list)
-    feature_names = vectorizer.get_feature_names()
+    feature_names = vectorizer.get_feature_names_out()
 
     dense = vectors.todense()
     denselist = dense.tolist()
