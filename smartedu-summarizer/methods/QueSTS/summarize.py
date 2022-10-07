@@ -27,9 +27,9 @@ def stemming(wordsList):
     return stemmed
 
 
-def sim(sentence, otherSent):
+def sim(sentence, otherSent, language):
     # sw contains the list of stopwords
-    sw = stopwords.words("english") 
+    sw = stopwords.words(language) 
 
     s1_list = word_tokenize(sentence) 
     s1_set = {w for w in s1_list if not w in sw} 
@@ -60,27 +60,27 @@ def sim(sentence, otherSent):
     return cosine
     
 
-def integrated_graph(sentence_list, minSimilarity):
+def integrated_graph(sentence_list, minSimilarity, language):
 
     g = nx.Graph()
     
     for sentence in range(len(sentence_list)-1):
         
         #adjacent sentences are connected
-        cosine = sim(sentence_list[sentence+1], sentence_list[sentence])
+        cosine = sim(sentence_list[sentence+1], sentence_list[sentence], language)
         g.add_edge(sentence+1, sentence, sim=cosine)
         
         #minSimilarity < cosine similarity between two sentences
         for otherSent in range(sentence+2, len(sentence_list)):
             
-            cosine = sim(sentence_list[sentence], sentence_list[otherSent])
+            cosine = sim(sentence_list[sentence], sentence_list[otherSent], language)
             if cosine > minSimilarity:
                 g.add_edge(sentence, otherSent, sim=cosine)
     return g
 
 
 #considers neighbours’ node weights
-def neighbours_weights(G, max_iter=100, tol=1.0e-4):
+def neighbours_weights(G, language, max_iter=100, tol=1.0e-4):
 
     sum_neighbors = dict([(n,1.0/len(G)) for n in G])
 
@@ -96,9 +96,7 @@ def neighbours_weights(G, max_iter=100, tol=1.0e-4):
             #v: values in n
             for v in G[s]:
                 simV = 0
-                #print("\n")
                 for u in G[v]:
-                   # print(G[v])
                     simV += G[v][u].get('sim')
                 if simV > 0:
                     sum_neighbors[s] += (G[s][v].get('sim') / simV) * xlast[v]
@@ -114,7 +112,7 @@ def neighbours_weights(G, max_iter=100, tol=1.0e-4):
 power iteration failed to converge in %d iterations."%(i+1))""")
 
 
-def node_weight(ig, sentence, query, sentence_list, neighbours):
+def node_weight(ig, sentence, query, sentence_list, neighbours, language):
 
     #d gives trade-off between the two parts of the formula
     d = 0.85
@@ -122,18 +120,18 @@ def node_weight(ig, sentence, query, sentence_list, neighbours):
     #relevancy of node to the query
     sum_nodes = 0
     for i in range(len(sentence_list)):
-        sum_nodes += sim(sentence_list[i], query)
+        sum_nodes += sim(sentence_list[i], query, language)
 
     #final formula
     if sum_nodes == 0:
         w = (1-d) * neighbours[sentence]
     else:
-        w = d * (sim(sentence_list[sentence], query) /sum_nodes) + (1-d) * neighbours[sentence]
+        w = d * (sim(sentence_list[sentence], query, language) /sum_nodes) + (1-d) * neighbours[sentence]
 
     return w
 
 
-def calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b):
+def calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b, language):
 
     # m is average of top three node weights among the neighbours of node excluding parent of node 
     mList = []
@@ -148,13 +146,13 @@ def calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b):
                 if weights[neighbour] != -1:
                   mList.append(weights[neighbour])
                 else:
-                  weights[neighbour] = node_weight(ig, neighbour, q, sentence_list, ngb)
+                  weights[neighbour] = node_weight(ig, neighbour, q, sentence_list, ngb, language)
                   mList.append(weights[neighbour])
         else:
             if weights[neighbour] != -1:
               mList.append(weights[neighbour])
             else:
-              weights[neighbour] = node_weight(ig, neighbour, q, sentence_list, ngb)
+              weights[neighbour] = node_weight(ig, neighbour, q, sentence_list, ngb, language)
               mList.append(weights[neighbour])
         
         #calculate n
@@ -182,17 +180,17 @@ def calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b):
     return alpha, weights
 
 
-def calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta):
+def calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta, language):
     if weights[neighbour] != -1:
       h = alpha * ig[node][neighbour].get('sim') + beta * weights[neighbour]
     else:
-      weights[neighbour] = node_weight(ig, neighbour, q, sentence_list, ngb)
+      weights[neighbour] = node_weight(ig, neighbour, q, sentence_list, ngb, language)
       h = alpha * ig[node][neighbour].get('sim') + beta * weights[neighbour]
 
     return weights, h
 
 
-def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb):
+def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb, language):
     openList = [root]
     closedList = [] 
     expandedArea = []  
@@ -206,7 +204,7 @@ def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb):
         CTree.add_node(root)
         #print("nivel -1")
         beta = 1
-        CTreeScore = beta * node_weight(ig, root, q, sentence_list, ngb)
+        CTreeScore = beta * node_weight(ig, root, q, sentence_list, ngb, language)
         return CTree, CTreeScore, weights
     else:
 
@@ -218,7 +216,7 @@ def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb):
             for node in openList:
                 if node not in closedList:
 
-                    alpha, weights = calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b)
+                    alpha, weights = calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b, language)
                     #alpha = 0.07  # 0.05 - 0.088
                     beta = 1
                     listValues = {}
@@ -226,7 +224,7 @@ def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb):
                     #choose children of node (max b)
                     for neighbour in ig[node]:
                       #print("n:", neighbour)
-                      weights, h = calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta)
+                      weights, h = calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta, language)
                       listValues[neighbour] = h
 
                     listValues = sorted(listValues.items(), key=lambda x: x[1], reverse=True)
@@ -253,12 +251,12 @@ def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb):
                 if weights[root] != -1:
                   CTreeScore = beta * weights[root]
                 else:
-                  weights[root] = node_weight(ig, root, q, sentence_list, ngb)
+                  weights[root] = node_weight(ig, root, q, sentence_list, ngb, language)
                   CTreeScore = beta * weights[root]
 
                 for node,neighbour in CTree.edges:
-                  alpha, weights = calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b)
-                  weights, h = calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta)
+                  alpha, weights = calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b, language)
+                  weights, h = calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta, language)
                   lvl = CTree[node][neighbour].get('level') + 1
                   CTreeScore += h / sqrt(lvl)
                  
@@ -274,19 +272,19 @@ def contextual_tree(ig, q, root, b, d, sentence_list, weights, ngb):
     if weights[root] != -1:
        CTreeScore = beta * weights[root]
     else:
-       weights[root] = node_weight(ig, root, q, sentence_list, ngb)
+       weights[root] = node_weight(ig, root, q, sentence_list, ngb, language)
        CTreeScore = beta * weights[root]
 
     for node,neighbour in CTree.edges:
-        alpha, weights = calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b)
-        weights, h = calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta)
+        alpha, weights = calculate_alpha(ig, node, weights, CTree, root, q, sentence_list, ngb, b, language)
+        weights, h = calculate_h(weights, ig, node, neighbour, q, sentence_list, ngb, alpha, beta, language)
         lvl = CTree[node][neighbour].get('level') + 1
         CTreeScore += h / sqrt(lvl)
 
     return CTree, CTreeScore, weights
 
 #combines all query trees
-def S_graph(ig, q, root, sentence_list, weights, ngb, b):
+def S_graph(ig, q, root, sentence_list, weights, ngb, b, language):
     SGraph = nx.DiGraph()
     query_words = q.split(" ")
     d = 15
@@ -298,7 +296,7 @@ def S_graph(ig, q, root, sentence_list, weights, ngb, b):
 
     for word in query_words:
         #print(word)
-        CTree, CTreeScore, weights = contextual_tree(ig, ps.stem(word), root, b, d, sentence_list, weights, ngb)
+        CTree, CTreeScore, weights = contextual_tree(ig, ps.stem(word), root, b, d, sentence_list, weights, ngb, language)
         if CTree.number_of_nodes() == 1:
             solo_nodes.append(list(CTree.nodes)[0])
         else:    
@@ -318,7 +316,7 @@ def S_graph(ig, q, root, sentence_list, weights, ngb, b):
     return SGraph, SGraphScore, weights
 
 
-def QueSTS(txt, b, lang):
+def QueSTS(txt, b, language):
     
     #-------------------------preprocessing-------------------------------------------
     #cleaning the text
@@ -335,12 +333,11 @@ def QueSTS(txt, b, lang):
 
     #construct integrated graph
     minSimilarity = 0.001
-    ig = integrated_graph(sentence_list, minSimilarity)
-    ngb = neighbours_weights(ig, max_iter=100, tol=1.0e-4)
+    ig = integrated_graph(sentence_list, minSimilarity, language)
+    ngb = neighbours_weights(ig, language, max_iter=100, tol=1.0e-4)
     
     #extract keywords from text
     kw_extractor = yake.KeywordExtractor()
-    language = lang
     max_ngram_size = 3
     deduplication_threshold = 0.5
     numOfKeywords = 5
@@ -359,7 +356,7 @@ def QueSTS(txt, b, lang):
     weights = [-1] * len(sentence_list)
 
     for i in range(nSentences):
-        SGraph, SGraphScore, weights = S_graph(ig, query, i, sentence_list, weights, ngb, b)
+        SGraph, SGraphScore, weights = S_graph(ig, query, i, sentence_list, weights, ngb, b, language)
         if SGraphScore > score:
             score = SGraphScore
             summ = list(SGraph.nodes())
