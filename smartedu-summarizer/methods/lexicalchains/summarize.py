@@ -4,7 +4,7 @@ import nltk
 from nltk.corpus import wordnet as wn
 import numpy as np
 import spacy
-import re
+nltk.download('omw-1.4')
 
 logger = logging.getLogger('smartedu-summarizer')
 
