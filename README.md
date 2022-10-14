@@ -36,8 +36,24 @@ python -m smartedu-summarizer.methods.<method>
 
 - `textrank`
 - `lexrank`
+- `tf_idf`
+- `QueSTS`
+- `lsa`
+- `lexicalchains`
 
 We recommend running each method first with the `--help` argument in order to obtain more information about their arguments.
+
+For lexicalchains method install for english
+
+```bash
+python -m spacy download en_core_web_sm
+```
+
+and for portuguese
+
+```bash
+python -m spacy download pt_core_news_sm
+```
 
 ### Verbose levels
 
