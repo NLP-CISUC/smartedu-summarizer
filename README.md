@@ -43,17 +43,6 @@ python -m smartedu-summarizer.methods.<method>
 
 We recommend running each method first with the `--help` argument in order to obtain more information about their arguments.
 
-For lexicalchains method install for English:
-
-```bash
-python -m spacy download en_core_web_sm
-```
-
-and for Portuguese:
-
-```bash
-python -m spacy download pt_core_news_sm
-```
 
 ### Verbose levels
 
