@@ -32,7 +32,7 @@ The methods are implemented as python modules. Therefore, to run any method, ple
 python -m smartedu-summarizer.methods.<method>
 ```
 
-`<method>` must be replaced with the desired summarization method. There are current two methods that can be run:
+`<method>` must be replaced with the desired summarization method. There are current eight methods that can be run:
 
 - `textrank`
 - `lexrank`
@@ -40,6 +40,8 @@ python -m smartedu-summarizer.methods.<method>
 - `QueSTS`
 - `lsa`
 - `lexicalchains`
+- `Pegasus`
+- `Distillbart`
 
 We recommend running each method first with the `--help` argument in order to obtain more information about their arguments.
 
