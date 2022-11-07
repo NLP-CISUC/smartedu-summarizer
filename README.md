@@ -24,6 +24,22 @@ In order to use pip, make sure to use the correct python version used originally
 pip install -r requirements.txt
 ```
 
+### Installing NLTK dependencies
+
+The tool also use some extra NLTK packages. To install them, you need ot enter the python interpreter by simply running
+
+```bash
+python
+```
+
+Then, run the following commands to install the packages
+
+```python
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+```
+
 ## Running
 
 The methods are implemented as python modules. Therefore, to run any method, please run
